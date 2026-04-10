@@ -1,36 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Garbage Reporter</title>
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- ✅ FIXED CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
 
-  <!-- Your CSS -->
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
-  <h2>Garbage Reporter</h2>
+  <header class="topbar">
+    <h1>Garbage Reporter</h1>
+    <p>Report waste, volunteer for cleanup, and track progress live.</p>
+  </header>
 
-  <div style="padding:10px; background:#f5f5f5; display:flex; gap:20px; font-weight:bold;">
-    <div>Total Reported: <span id="totalCount">0</span></div>
-    <div>In Progress: <span id="inProgressCount">0</span></div>
-    <div>Cleaned: <span id="cleanedCount">0</span></div>
-  </div>
+  <section class="dashboard">
+    <div class="stat-card">
+      <h3>Total Reports</h3>
+      <span id="totalCount">0</span>
+    </div>
+    <div class="stat-card progress">
+      <h3>In Progress</h3>
+      <span id="inProgressCount">0</span>
+    </div>
+    <div class="stat-card cleaned">
+      <h3>Cleaned</h3>
+      <span id="cleanedCount">0</span>
+    </div>
+  </section>
 
-  <div id="map"></div>
+  <main class="layout">
+    <section class="side-panel">
+      <div class="panel-card">
+        <h2>How it works</h2>
+        <ol>
+          <li>Click on the map to select a garbage spot</li>
+          <li>Choose severity and add image</li>
+          <li>Submit report</li>
+          <li>Others can volunteer and mark it cleaned</li>
+        </ol>
+      </div>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+      <div class="panel-card highlight">
+        <h2>Selected Spot</h2>
+        <p><strong>Latitude:</strong> <span id="selectedLat">Not selected</span></p>
+        <p><strong>Longitude:</strong> <span id="selectedLng">Not selected</span></p>
+        <p class="small-note">Click any point on the map to open the report form.</p>
+      </div>
+    </section>
 
-  <!-- Firebase -->
+    <section class="map-section">
+      <div id="map"></div>
+    </section>
+  </main>
+
+  <!-- ✅ FIXED CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script type="module" src="firebase.js"></script>
-
-  <!-- App JS -->
   <script src="app.js"></script>
 
 </body>

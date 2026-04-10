@@ -8,117 +8,118 @@ import {
   doc
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
-import {
-  getStorage,
-  ref,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
-
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MSG_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAEMdeSA7DTCfdx-rIsAVf6W8iSBrbl4Ho",
+  authDomain: "garbage-reporter-3c7f9.firebaseapp.com",
+  projectId: "garbage-reporter-3c7f9",
+  storageBucket: "garbage-reporter-3c7f9.appspot.com",
+  messagingSenderId: "56547158656",
+  appId: "1:56547158656:web:eedd00f3bf58ca2f245465"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
-let reportMarkers = [];
+let markers = [];
 
 window.submitReport = async function(lat, lng) {
   try {
     const severity = document.getElementById("severity").value;
-    const imageInput = document.getElementById("imageFile");
-    const file = imageInput?.files?.[0];
-
-    let imageUrl = "https://via.placeholder.com/150";
-
-    if (file) {
-      const storageRef = ref(storage, `garbage-images/${Date.now()}-${file.name}`);
-      await uploadBytes(storageRef, file);
-      imageUrl = await getDownloadURL(storageRef);
-    }
 
     await addDoc(collection(db, "reports"), {
       lat,
       lng,
       severity,
       status: "reported",
-      imageUrl
+      volunteer: "",
+      imageUrl: "https://via.placeholder.com/300x180"
     });
 
-    alert("Report submitted!");
+    alert("Report added!");
   } catch (err) {
     console.error(err);
-    alert("Error submitting report");
+    alert("Error: " + err.message);
   }
 };
 
-window.updateStatus = async function(id, newStatus) {
-  try {
-    await updateDoc(doc(db, "reports", id), {
-      status: newStatus
-    });
-  } catch (err) {
-    console.error(err);
-    alert("Error updating status");
-  }
+window.claimSpot = async function(id) {
+  const name = prompt("Enter your name to volunteer:");
+  if (!name) return;
+
+  await updateDoc(doc(db, "reports", id), {
+    status: "in_progress",
+    volunteer: name
+  });
+};
+
+window.markCleaned = async function(id) {
+  await updateDoc(doc(db, "reports", id), {
+    status: "cleaned"
+  });
 };
 
 window.listenReports = function(map) {
-  const reportsRef = collection(db, "reports");
+  onSnapshot(collection(db, "reports"), (snapshot) => {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
 
-  onSnapshot(reportsRef, (snapshot) => {
-    reportMarkers.forEach(marker => map.removeLayer(marker));
-    reportMarkers = [];
+    let total = 0, progress = 0, cleaned = 0;
 
-    let total = 0;
-    let inProgress = 0;
-    let cleaned = 0;
-
-    snapshot.forEach((docSnap) => {
+    snapshot.forEach(docSnap => {
       const data = docSnap.data();
       total++;
 
-      if (data.status === "in_progress") inProgress++;
+      if (data.status === "in_progress") progress++;
       if (data.status === "cleaned") cleaned++;
 
       let color = "green";
       if (data.severity === "Medium") color = "orange";
       if (data.severity === "High") color = "red";
 
-      let actionBtn = "";
+      let actionHTML = "";
+      let statusClass = "status-reported";
+
       if (data.status === "reported") {
-        actionBtn = `<button onclick="updateStatus('${docSnap.id}', 'in_progress')">Claim Cleanup</button>`;
+        statusClass = "status-reported";
+        actionHTML = `
+          <button class="popup-btn claim-btn" onclick="claimSpot('${docSnap.id}')">
+            I Want to Volunteer
+          </button>
+        `;
       } else if (data.status === "in_progress") {
-        actionBtn = `<button onclick="updateStatus('${docSnap.id}', 'cleaned')">Mark Cleaned</button>`;
+        statusClass = "status-progress";
+        actionHTML = `
+          <button class="popup-btn clean-btn" onclick="markCleaned('${docSnap.id}')">
+            Mark as Cleaned
+          </button>
+        `;
       } else {
-        actionBtn = `<span>✅ Completed</span>`;
+        statusClass = "status-cleaned";
+        actionHTML = `<div class="status-badge status-cleaned">Cleaned</div>`;
       }
 
       const marker = L.circleMarker([data.lat, data.lng], {
         color,
-        radius: 8
+        radius: 9,
+        fillOpacity: 0.9
       }).addTo(map);
 
       marker.bindPopup(`
-        <b>Garbage Report</b><br>
-        Severity: ${data.severity}<br>
-        Status: ${data.status}<br><br>
-        <img src="${data.imageUrl}" width="120" /><br><br>
-        ${actionBtn}
+        <div class="popup-title">Garbage Report</div>
+        <div class="status-badge ${statusClass}">
+          ${data.status === "in_progress" ? "In Progress" : data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+        </div>
+        <p><strong>Severity:</strong> ${data.severity}</p>
+        <p><strong>Volunteer:</strong> ${data.volunteer || "Not assigned"}</p>
+        <img src="${data.imageUrl}" class="report-img" />
+        ${actionHTML}
       `);
 
-      reportMarkers.push(marker);
+      markers.push(marker);
     });
 
     document.getElementById("totalCount").innerText = total;
-    document.getElementById("inProgressCount").innerText = inProgress;
+    document.getElementById("inProgressCount").innerText = progress;
     document.getElementById("cleanedCount").innerText = cleaned;
   });
 };
