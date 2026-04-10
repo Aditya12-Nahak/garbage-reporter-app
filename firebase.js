@@ -41,7 +41,8 @@ function getPoints(severity) {
 function getStatusClass(status) {
   if (status === "reported") return "status-reported";
   if (status === "in_progress") return "status-progress";
-  return "status-cleaned";
+  if (status === "cleaned") return "status-cleaned";
+  return "status-reported";
 }
 
 function getStatusText(status) {
@@ -164,6 +165,13 @@ window.listenReports = function (map) {
         `;
       } else if (data.status === "in_progress") {
         actionHTML = `
+          <label class="popup-label">Upload Cleanup Image</label>
+          <input
+            type="file"
+            class="popup-input"
+            accept="image/*"
+            capture="environment"
+          />
           <button class="popup-btn clean-btn" onclick="finishCleanup('${docSnap.id}', '${data.severity}', '${data.volunteer}')">
             Mark Cleaned
           </button>
