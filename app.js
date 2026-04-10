@@ -1,4 +1,3 @@
-
 var map = L.map('map').setView([20.5937, 78.9629], 5);
 var marker;
 
@@ -8,8 +7,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 setTimeout(() => {
-  if (window.loadReports) {
-    window.loadReports(map);
+  if (window.listenReports) {
+    window.listenReports(map);
   }
 }, 1000);
 
@@ -31,6 +30,9 @@ map.on('click', function(e) {
       <option>Medium</option>
       <option>High</option>
     </select><br><br>
+
+    <label>Add Image:</label>
+    <input type="file" id="imageFile" accept="image/*" capture="environment" /><br><br>
 
     <button onclick="submitReport(${e.latlng.lat}, ${e.latlng.lng})">
       Submit

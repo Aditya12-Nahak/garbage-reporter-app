@@ -6,7 +6,7 @@
   <title>Garbage Reporter</title>
 
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />git init
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
   <!-- Your CSS -->
   <link rel="stylesheet" href="style.css" />
@@ -15,6 +15,13 @@
 <body>
 
   <h2>Garbage Reporter</h2>
+
+  <div style="padding:10px; background:#f5f5f5; display:flex; gap:20px; font-weight:bold;">
+    <div>Total Reported: <span id="totalCount">0</span></div>
+    <div>In Progress: <span id="inProgressCount">0</span></div>
+    <div>Cleaned: <span id="cleanedCount">0</span></div>
+  </div>
+
   <div id="map"></div>
 
   <!-- Leaflet JS -->

@@ -1,50 +1,124 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  updateDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAEMdeSA7DTCfdx-rIsAVf6W8iSBrbl4Ho",
-  authDomain: "garbage-reporter-3c7f9.firebaseapp.com",
-  projectId: "garbage-reporter-3c7f9",
-  storageBucket: "garbage-reporter-3c7f9.firebasestorage.app",
-  messagingSenderId: "56547158656",
-  appId: "1:56547158656:web:eedd00f3bf58ca2f245465"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MSG_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+let reportMarkers = [];
 
 window.submitReport = async function(lat, lng) {
-  const severity = document.getElementById("severity").value;
+  try {
+    const severity = document.getElementById("severity").value;
+    const imageInput = document.getElementById("imageFile");
+    const file = imageInput?.files?.[0];
 
-  await addDoc(collection(db, "reports"), {
-    lat: lat,
-    lng: lng,
-    severity: severity,
-    status: "reported",
-    imageUrl: "https://via.placeholder.com/150"
-  });
+    let imageUrl = "https://via.placeholder.com/150";
 
-  alert("Saved to Firebase!");
+    if (file) {
+      const storageRef = ref(storage, `garbage-images/${Date.now()}-${file.name}`);
+      await uploadBytes(storageRef, file);
+      imageUrl = await getDownloadURL(storageRef);
+    }
+
+    await addDoc(collection(db, "reports"), {
+      lat,
+      lng,
+      severity,
+      status: "reported",
+      imageUrl
+    });
+
+    alert("Report submitted!");
+  } catch (err) {
+    console.error(err);
+    alert("Error submitting report");
+  }
 };
 
-window.loadReports = async function(map) {
-  const snapshot = await getDocs(collection(db, "reports"));
+window.updateStatus = async function(id, newStatus) {
+  try {
+    await updateDoc(doc(db, "reports", id), {
+      status: newStatus
+    });
+  } catch (err) {
+    console.error(err);
+    alert("Error updating status");
+  }
+};
 
-  snapshot.forEach((docItem) => {
-    const data = docItem.data();
+window.listenReports = function(map) {
+  const reportsRef = collection(db, "reports");
 
-    let color = "green";
-    if (data.severity === "Medium") color = "orange";
-    if (data.severity === "High") color = "red";
+  onSnapshot(reportsRef, (snapshot) => {
+    reportMarkers.forEach(marker => map.removeLayer(marker));
+    reportMarkers = [];
 
-    L.circleMarker([data.lat, data.lng], {
-      color: color,
-      radius: 8
-    }).addTo(map).bindPopup(`
-      <b>Garbage Report</b><br>
-      Severity: ${data.severity}<br>
-      Status: ${data.status}<br>
-      <img src="${data.imageUrl}" width="100" />
-    `);
+    let total = 0;
+    let inProgress = 0;
+    let cleaned = 0;
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      total++;
+
+      if (data.status === "in_progress") inProgress++;
+      if (data.status === "cleaned") cleaned++;
+
+      let color = "green";
+      if (data.severity === "Medium") color = "orange";
+      if (data.severity === "High") color = "red";
+
+      let actionBtn = "";
+      if (data.status === "reported") {
+        actionBtn = `<button onclick="updateStatus('${docSnap.id}', 'in_progress')">Claim Cleanup</button>`;
+      } else if (data.status === "in_progress") {
+        actionBtn = `<button onclick="updateStatus('${docSnap.id}', 'cleaned')">Mark Cleaned</button>`;
+      } else {
+        actionBtn = `<span>✅ Completed</span>`;
+      }
+
+      const marker = L.circleMarker([data.lat, data.lng], {
+        color,
+        radius: 8
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <b>Garbage Report</b><br>
+        Severity: ${data.severity}<br>
+        Status: ${data.status}<br><br>
+        <img src="${data.imageUrl}" width="120" /><br><br>
+        ${actionBtn}
+      `);
+
+      reportMarkers.push(marker);
+    });
+
+    document.getElementById("totalCount").innerText = total;
+    document.getElementById("inProgressCount").innerText = inProgress;
+    document.getElementById("cleanedCount").innerText = cleaned;
   });
 };
