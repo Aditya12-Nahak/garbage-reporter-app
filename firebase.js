@@ -5,7 +5,13 @@ import {
   addDoc,
   onSnapshot,
   updateDoc,
-  doc
+  doc,
+  getDoc,
+  setDoc,
+  query,
+  orderBy,
+  limit,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -20,9 +26,32 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let markers = [];
+let reportMarkers = [];
 
-window.submitReport = async function(lat, lng) {
+const DUMMY_BEFORE = "https://via.placeholder.com/300x180?text=Before+Image";
+const DUMMY_AFTER = "https://via.placeholder.com/300x180?text=After+Image";
+
+function getPoints(severity) {
+  if (severity === "Low") return 10;
+  if (severity === "Medium") return 25;
+  if (severity === "High") return 50;
+  return 0;
+}
+
+function getStatusClass(status) {
+  if (status === "reported") return "status-reported";
+  if (status === "in_progress") return "status-progress";
+  return "status-cleaned";
+}
+
+function getStatusText(status) {
+  if (status === "reported") return "Reported";
+  if (status === "in_progress") return "In Progress";
+  if (status === "cleaned") return "Cleaned";
+  return status;
+}
+
+window.submitReport = async function (lat, lng) {
   try {
     const severity = document.getElementById("severity").value;
 
@@ -32,44 +61,93 @@ window.submitReport = async function(lat, lng) {
       severity,
       status: "reported",
       volunteer: "",
-      imageUrl: "https://via.placeholder.com/300x180"
+      beforeImageUrl: DUMMY_BEFORE,
+      afterImageUrl: "",
+      pointsAwarded: 0,
+      createdAt: serverTimestamp(),
+      cleanedAt: null
     });
 
-    alert("Report added!");
+    alert("Report submitted successfully");
   } catch (err) {
     console.error(err);
     alert("Error: " + err.message);
   }
 };
 
-window.claimSpot = async function(id) {
-  const name = prompt("Enter your name to volunteer:");
-  if (!name) return;
+window.claimSpot = async function (reportId) {
+  try {
+    const volunteerName = prompt("Enter your name to volunteer:");
+    if (!volunteerName) return;
 
-  await updateDoc(doc(db, "reports", id), {
-    status: "in_progress",
-    volunteer: name
-  });
+    await updateDoc(doc(db, "reports", reportId), {
+      status: "in_progress",
+      volunteer: volunteerName
+    });
+  } catch (err) {
+    console.error(err);
+    alert("Error claiming spot");
+  }
 };
 
-window.markCleaned = async function(id) {
-  await updateDoc(doc(db, "reports", id), {
-    status: "cleaned"
-  });
+window.finishCleanup = async function (reportId, severity, volunteer) {
+  try {
+    if (!volunteer) {
+      alert("No volunteer assigned");
+      return;
+    }
+
+    const points = getPoints(severity);
+
+    await updateDoc(doc(db, "reports", reportId), {
+      status: "cleaned",
+      afterImageUrl: DUMMY_AFTER,
+      pointsAwarded: points,
+      cleanedAt: serverTimestamp()
+    });
+
+    const volunteerRef = doc(db, "volunteers", volunteer);
+    const volunteerSnap = await getDoc(volunteerRef);
+
+    if (volunteerSnap.exists()) {
+      const oldData = volunteerSnap.data();
+      await updateDoc(volunteerRef, {
+        totalScore: (oldData.totalScore || 0) + points,
+        cleanupCount: (oldData.cleanupCount || 0) + 1
+      });
+    } else {
+      await setDoc(volunteerRef, {
+        name: volunteer,
+        totalScore: points,
+        cleanupCount: 1
+      });
+    }
+
+    alert("Marked as cleaned");
+  } catch (err) {
+    console.error(err);
+    alert("Error: " + err.message);
+  }
 };
 
-window.listenReports = function(map) {
+window.listenReports = function (map) {
   onSnapshot(collection(db, "reports"), (snapshot) => {
-    markers.forEach(m => map.removeLayer(m));
-    markers = [];
+    reportMarkers.forEach(marker => {
+      if (map.hasLayer(marker)) {
+        map.removeLayer(marker);
+      }
+    });
+    reportMarkers = [];
 
-    let total = 0, progress = 0, cleaned = 0;
+    let total = 0;
+    let inProgress = 0;
+    let cleaned = 0;
 
-    snapshot.forEach(docSnap => {
+    snapshot.forEach((docSnap) => {
       const data = docSnap.data();
       total++;
 
-      if (data.status === "in_progress") progress++;
+      if (data.status === "in_progress") inProgress++;
       if (data.status === "cleaned") cleaned++;
 
       let color = "green";
@@ -77,25 +155,24 @@ window.listenReports = function(map) {
       if (data.severity === "High") color = "red";
 
       let actionHTML = "";
-      let statusClass = "status-reported";
 
       if (data.status === "reported") {
-        statusClass = "status-reported";
         actionHTML = `
           <button class="popup-btn claim-btn" onclick="claimSpot('${docSnap.id}')">
             I Want to Volunteer
           </button>
         `;
       } else if (data.status === "in_progress") {
-        statusClass = "status-progress";
         actionHTML = `
-          <button class="popup-btn clean-btn" onclick="markCleaned('${docSnap.id}')">
-            Mark as Cleaned
+          <button class="popup-btn clean-btn" onclick="finishCleanup('${docSnap.id}', '${data.severity}', '${data.volunteer}')">
+            Mark Cleaned
           </button>
         `;
       } else {
-        statusClass = "status-cleaned";
-        actionHTML = `<div class="status-badge status-cleaned">Cleaned</div>`;
+        actionHTML = `
+          <p><strong>Volunteer:</strong> ${data.volunteer || "Not assigned"}</p>
+          <p><strong>Points:</strong> ${data.pointsAwarded || 0}</p>
+        `;
       }
 
       const marker = L.circleMarker([data.lat, data.lng], {
@@ -106,20 +183,68 @@ window.listenReports = function(map) {
 
       marker.bindPopup(`
         <div class="popup-title">Garbage Report</div>
-        <div class="status-badge ${statusClass}">
-          ${data.status === "in_progress" ? "In Progress" : data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+        <div class="status-badge ${getStatusClass(data.status)}">
+          ${getStatusText(data.status)}
         </div>
+
         <p><strong>Severity:</strong> ${data.severity}</p>
         <p><strong>Volunteer:</strong> ${data.volunteer || "Not assigned"}</p>
-        <img src="${data.imageUrl}" class="report-img" />
+
+        <div class="before-after">
+          <div>
+            <p><strong>Before</strong></p>
+            <img src="${data.beforeImageUrl || DUMMY_BEFORE}" class="report-img" />
+          </div>
+          <div>
+            <p><strong>After</strong></p>
+            <img src="${data.afterImageUrl || 'https://via.placeholder.com/150?text=Pending'}" class="report-img" />
+          </div>
+        </div>
+
         ${actionHTML}
       `);
 
-      markers.push(marker);
+      reportMarkers.push(marker);
     });
 
     document.getElementById("totalCount").innerText = total;
-    document.getElementById("inProgressCount").innerText = progress;
+    document.getElementById("inProgressCount").innerText = inProgress;
     document.getElementById("cleanedCount").innerText = cleaned;
+  });
+};
+
+window.listenLeaderboard = function () {
+  const leaderboardRef = query(
+    collection(db, "volunteers"),
+    orderBy("totalScore", "desc"),
+    limit(10)
+  );
+
+  onSnapshot(leaderboardRef, (snapshot) => {
+    const container = document.getElementById("leaderboardList");
+    if (!container) return;
+
+    let html = "";
+
+    if (snapshot.empty) {
+      html = `<p class="small-note">No volunteers yet</p>`;
+    } else {
+      snapshot.forEach((docSnap, index) => {
+        const data = docSnap.data();
+        html += `
+          <div class="leaderboard-item">
+            <div>
+              <strong>#${index + 1} ${data.name}</strong><br>
+              <span>${data.cleanupCount || 0} cleanups</span>
+            </div>
+            <div>
+              <strong>${data.totalScore || 0} pts</strong>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    container.innerHTML = html;
   });
 };

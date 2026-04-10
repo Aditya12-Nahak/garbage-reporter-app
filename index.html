@@ -5,29 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Garbage Reporter</title>
 
-  <!-- ✅ FIXED CDN -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+  />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
   <header class="topbar">
-    <h1>Garbage Reporter</h1>
-    <p>Report waste, volunteer for cleanup, and track progress live.</p>
+    <h1 id="titleText">Garbage Reporter</h1>
+    <p id="subtitleText">Report waste, volunteer for cleanup, and track progress live.</p>
+
+    <select id="languageSelect" class="popup-select language-select">
+      <option value="en">English</option>
+      <option value="hi">Hindi</option>
+    </select>
   </header>
 
   <section class="dashboard">
     <div class="stat-card">
-      <h3>Total Reports</h3>
+      <h3 id="totalLabel">Total Reports</h3>
       <span id="totalCount">0</span>
     </div>
     <div class="stat-card progress">
-      <h3>In Progress</h3>
+      <h3 id="progressLabel">In Progress</h3>
       <span id="inProgressCount">0</span>
     </div>
     <div class="stat-card cleaned">
-      <h3>Cleaned</h3>
+      <h3 id="cleanedLabel">Cleaned</h3>
       <span id="cleanedCount">0</span>
     </div>
   </section>
@@ -35,20 +41,25 @@
   <main class="layout">
     <section class="side-panel">
       <div class="panel-card">
+        <h2 id="leaderboardTitle">Volunteer Leaderboard</h2>
+        <div id="leaderboardList"></div>
+      </div>
+
+      <div class="panel-card">
         <h2>How it works</h2>
         <ol>
           <li>Click on the map to select a garbage spot</li>
-          <li>Choose severity and add image</li>
+          <li>Choose severity and add a before image</li>
           <li>Submit report</li>
-          <li>Others can volunteer and mark it cleaned</li>
+          <li>Anyone can volunteer and upload after-cleaning proof</li>
         </ol>
       </div>
 
       <div class="panel-card highlight">
-        <h2>Selected Spot</h2>
+        <h2 id="selectedSpotTitle">Selected Spot</h2>
         <p><strong>Latitude:</strong> <span id="selectedLat">Not selected</span></p>
         <p><strong>Longitude:</strong> <span id="selectedLng">Not selected</span></p>
-        <p class="small-note">Click any point on the map to open the report form.</p>
+        <p class="small-note" id="selectedNote">Click any point on the map to open the report form.</p>
       </div>
     </section>
 
@@ -57,11 +68,8 @@
     </section>
   </main>
 
-  <!-- ✅ FIXED CDN -->
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <script type="module" src="firebase.js"></script>
   <script src="app.js"></script>
-
 </body>
 </html>

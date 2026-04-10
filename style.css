@@ -122,7 +122,7 @@ body {
 }
 
 .leaflet-popup-content {
-  width: 250px;
+  width: 260px;
   font-size: 14px;
 }
 
@@ -221,6 +221,42 @@ body {
 .status-cleaned {
   background: #d1fae5;
   color: #065f46;
+}
+
+.language-select {
+  max-width: 180px;
+  margin: 12px auto 0;
+  display: block;
+  background: white;
+}
+
+#leaderboardList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 10px;
+  border-left: 4px solid #2563eb;
+}
+
+.before-after {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.before-after p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 @media (max-width: 900px) {

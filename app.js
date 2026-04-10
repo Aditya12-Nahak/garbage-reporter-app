@@ -1,5 +1,5 @@
 var map = L.map('map').setView([20.5937, 78.9629], 5);
-var marker;
+var tempMarker = null;
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
@@ -7,22 +7,21 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 window.addEventListener("load", () => {
-  if (window.listenReports) {
-    window.listenReports(map);
-  }
+  if (window.listenReports) window.listenReports(map);
+  if (window.listenLeaderboard) window.listenLeaderboard();
 });
 
-map.on('click', function(e) {
-  if (marker) {
-    map.removeLayer(marker);
+map.on('click', function (e) {
+  if (tempMarker) {
+    map.removeLayer(tempMarker);
   }
 
   document.getElementById("selectedLat").innerText = e.latlng.lat.toFixed(6);
   document.getElementById("selectedLng").innerText = e.latlng.lng.toFixed(6);
 
-  marker = L.marker(e.latlng).addTo(map);
+  tempMarker = L.marker(e.latlng).addTo(map);
 
-  marker.bindPopup(`
+  tempMarker.bindPopup(`
     <div class="popup-title">Report Garbage</div>
 
     <label class="popup-label">Severity</label>
@@ -32,14 +31,14 @@ map.on('click', function(e) {
       <option>High</option>
     </select>
 
-    <label class="popup-label">Add Image</label>
+    <label class="popup-label">Capture / Select Image</label>
     <input
       type="file"
-      id="imageFile"
+      id="beforeImageFile"
       class="popup-input"
       accept="image/*"
       capture="environment"
-      onchange="previewSelectedImage(event)"
+      onchange="previewSelectedImage(event, 'previewImage')"
     />
 
     <img id="previewImage" class="preview-img" style="display:none;" />
@@ -50,9 +49,9 @@ map.on('click', function(e) {
   `).openPopup();
 });
 
-window.previewSelectedImage = function(event) {
+window.previewSelectedImage = function (event, previewId) {
   const file = event.target.files[0];
-  const preview = document.getElementById("previewImage");
+  const preview = document.getElementById(previewId);
 
   if (!file || !preview) return;
 
